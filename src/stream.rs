@@ -45,6 +45,16 @@ impl KcpStream {
         Ok(KcpStream::with_session(session))
     }
 
+    pub async fn connect_bind(config: &KcpConfig, local: SocketAddr, addr: SocketAddr) -> KcpResult<KcpStream> {
+        let udp = UdpSocket::bind(local).await?;
+        let udp = Arc::new(udp);
+        let socket = KcpSocket::new(config, 0, udp, addr, config.stream)?;
+
+        let session = KcpSession::new_shared(socket, config.session_expire, None);
+
+        Ok(KcpStream::with_session(session))
+    }
+
     pub(crate) fn with_session(session: Arc<KcpSession>) -> KcpStream {
         KcpStream {
             session,
