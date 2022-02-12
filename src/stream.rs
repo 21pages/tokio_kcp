@@ -125,6 +125,10 @@ impl KcpStream {
     pub async fn recv(&mut self, buf: &mut [u8]) -> KcpResult<usize> {
         future::poll_fn(|cx| self.poll_recv(cx, buf)).await
     }
+
+    pub async fn local_addr(&self) -> std::io::Result<SocketAddr> {
+        self.session.local_addr().await
+    }
 }
 
 impl AsyncRead for KcpStream {

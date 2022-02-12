@@ -282,6 +282,10 @@ impl KcpSocket {
     pub fn last_update_time(&self) -> Instant {
         self.last_update
     }
+
+    pub fn local_addr(&self) -> std::io::Result<SocketAddr> {
+        self.socket.local_addr()
+    }
 }
 
 #[cfg(test)]

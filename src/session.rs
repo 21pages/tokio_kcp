@@ -203,6 +203,10 @@ impl KcpSession {
         let socket = self.socket.lock().await;
         socket.conv()
     }
+
+    pub async fn local_addr(&self) -> std::io::Result<SocketAddr> {
+        self.socket.lock().await.local_addr()
+    }
 }
 
 pub struct KcpSessionManager {
