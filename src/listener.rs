@@ -15,7 +15,7 @@ use tokio::{
     time,
 };
 
-use crate::{config::KcpConfig, session::KcpSessionManager, stream::KcpStream};
+use crate::{config::KcpConfig, session::KcpSessionManager, stream::KcpStream, utils::new_reuse};
 
 pub struct KcpListener {
     udp: Arc<UdpSocket>,
@@ -30,8 +30,12 @@ impl Drop for KcpListener {
 }
 
 impl KcpListener {
-    pub async fn bind<A: ToSocketAddrs>(config: KcpConfig, addr: A) -> KcpResult<KcpListener> {
-        let udp = UdpSocket::bind(addr).await?;
+    pub async fn bind<A: ToSocketAddrs>(config: KcpConfig, addr: A, reuse: bool) -> KcpResult<KcpListener> {
+        let udp = if reuse {
+            new_reuse(addr).await?
+        } else {
+            UdpSocket::bind(addr).await?
+        };
         let udp = Arc::new(udp);
         let server_udp = udp.clone();
 
@@ -144,9 +148,12 @@ mod test {
 
     #[tokio::test]
     async fn multi_echo() {
+        std::env::set_var("RUST_LOG", "trace");
         let _ = env_logger::try_init();
 
-        let mut listener = KcpListener::bind(KcpConfig::default(), "127.0.0.1:0").await.unwrap();
+        let mut listener = KcpListener::bind(KcpConfig::default(), "127.0.0.1:0", true)
+            .await
+            .unwrap();
         let server_addr = listener.local_addr().unwrap();
 
         tokio::spawn(async move {
@@ -170,9 +177,17 @@ mod test {
 
         let mut vfut = Vec::new();
 
-        for _ in 1..100 {
+        for i in 1..100 {
+            log::trace!("test [{:?}]", i);
             vfut.push(async move {
-                let mut stream = KcpStream::connect(&KcpConfig::default(), server_addr).await.unwrap();
+                let mut stream = KcpStream::connect_bind(
+                    &KcpConfig::default(),
+                    "127.0.0.1:3000".parse().unwrap(),
+                    server_addr,
+                    true,
+                )
+                .await
+                .unwrap();
 
                 for _ in 1..20 {
                     const SEND_BUFFER: &[u8] = b"HELLO WORLD";

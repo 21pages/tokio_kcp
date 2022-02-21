@@ -14,7 +14,7 @@ use tokio::{
     net::UdpSocket,
 };
 
-use crate::{config::KcpConfig, session::KcpSession, skcp::KcpSocket};
+use crate::{config::KcpConfig, session::KcpSession, skcp::KcpSocket, utils::new_reuse};
 
 pub struct KcpStream {
     session: Arc<KcpSession>,
@@ -45,8 +45,17 @@ impl KcpStream {
         Ok(KcpStream::with_session(session))
     }
 
-    pub async fn connect_bind(config: &KcpConfig, local: SocketAddr, addr: SocketAddr) -> KcpResult<KcpStream> {
-        let udp = UdpSocket::bind(local).await?;
+    pub async fn connect_bind(
+        config: &KcpConfig,
+        local: SocketAddr,
+        addr: SocketAddr,
+        reuse: bool,
+    ) -> KcpResult<KcpStream> {
+        let udp = if reuse {
+            new_reuse(local).await?
+        } else {
+            UdpSocket::bind(local).await?
+        };
         let udp = Arc::new(udp);
         let socket = KcpSocket::new(config, 0, udp, addr, config.stream)?;
 

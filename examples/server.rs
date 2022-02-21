@@ -10,13 +10,14 @@ use tokio_kcp::{KcpConfig, KcpListener};
 
 #[tokio::main]
 async fn main() {
+    std::env::set_var("RUST_LOG", "trace");
     env_logger::init();
 
     let config = KcpConfig::default();
 
     let server_addr = "127.0.0.1:3100".parse::<SocketAddr>().unwrap();
 
-    let mut listener = KcpListener::bind(config, server_addr).await.unwrap();
+    let mut listener = KcpListener::bind(config, server_addr, true).await.unwrap();
 
     loop {
         let (mut stream, peer_addr) = match listener.accept().await {
